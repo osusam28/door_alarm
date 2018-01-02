@@ -9,8 +9,8 @@
 const int DEBOUNCE_WAIT = 50;
 //How often to check the button status
 const int POLL_TIME = 10;
-//Alarm pulse frequency
-int PULSE_TIME = 1000;
+//Time before alarm sounds
+const int ALARM_DELAY = 5000;
 
 //Pin definitions
 int buzzer = D0;
@@ -33,18 +33,21 @@ enum states {
 
 enum events {
   KEY_PRESSED,
-  DOOR_OPENED
+  DOOR_OPENED,
+  ALARM
 };
 
 //Timer routines
 Timer door_timer(POLL_TIME, door_opened);
 Timer keypad_timer(POLL_TIME, key_pressed);
-Timer alarm_timer(PULSE_TIME, alarm_ctrl);
+Timer alarm_timer(ALARM_DELAY, alarm_ctrl);
 
 int lastDoorValue = 0;
 bool doorOpened = false;
 int lastKeyValue = 0;
 bool keyPressed = false;
+
+bool alarmTimeUp = false;
 
 void change_state(events e, int data);
 
@@ -79,6 +82,11 @@ void loop() {
     change_state(DOOR_OPENED, 0);
 
     doorOpened = false;
+  }
+  if(alarmTimeUp) {
+    change_state(ALARM, 0);
+
+    alarmTimeUp = false;
   }
 }
 
@@ -120,8 +128,38 @@ void change_state(events e, int data) {
       }
       break;
     case ALARM_TRIGGERED:
+      if(e == KEY_PRESSED) {
+        enter_key(data);
+        Serial.print("key ");
+        Serial.print(data);
+        Serial.println(" entered ...");
+
+        if(is_pin_entered()) {
+          digitalWrite(led, LOW);
+          alarm_timer.stop();
+          currentState = NORMAL;
+          Serial.println("back to normal ...");
+        }
+      }
+      if(e == ALARM) {
+        Serial.println("alarm sounding ...");
+        alarm_timer.stop();
+        currentState = ALARM_ON;
+      }
       break;
     case ALARM_ON:
+      if(e == KEY_PRESSED) {
+        enter_key(data);
+        Serial.print("key ");
+        Serial.print(data);
+        Serial.println(" entered ...");
+
+        if(is_pin_entered()) {
+          digitalWrite(led, LOW);
+          currentState = NORMAL;
+          Serial.println("back to normal ...");
+        }
+      }
       break;
     default:
       break;
@@ -199,5 +237,5 @@ void door_opened() {
 }
 
 void alarm_ctrl() {
-  digitalWrite(led, !digitalRead(led));
+  alarmTimeUp = true;
 }

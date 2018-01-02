@@ -9,8 +9,10 @@
 const int DEBOUNCE_WAIT = 50;
 //How often to check the button status
 const int POLL_TIME = 10;
+//Time to pulse before alarm sounds
+const int ALARM_POLL_TIME = 1000;
 //Time before alarm sounds
-const int ALARM_DELAY = 5000;
+const int ALARM_DELAY = 6000;
 
 //Pin definitions
 int buzzer = D0;
@@ -40,13 +42,14 @@ enum events {
 //Timer routines
 Timer door_timer(POLL_TIME, door_opened);
 Timer keypad_timer(POLL_TIME, key_pressed);
-Timer alarm_timer(ALARM_DELAY, alarm_ctrl);
+Timer alarm_timer(ALARM_POLL_TIME, alarm_ctrl);
 
 int lastDoorValue = 0;
 bool doorOpened = false;
 int lastKeyValue = 0;
 bool keyPressed = false;
 
+int alarm_count = ALARM_DELAY / ALARM_POLL_TIME;
 bool alarmTimeUp = false;
 
 void change_state(events e, int data);
@@ -66,6 +69,7 @@ void setup() {
   pinMode(led, OUTPUT);
 
   digitalWrite(buzzer, LOW);
+  digitalWrite(led, LOW);
 
   currentState = NORMAL;
 }
@@ -100,7 +104,6 @@ void change_state(events e, int data) {
         Serial.println(" entered ...");
 
         if(is_pin_entered()) {
-          digitalWrite(led, HIGH);
           currentState = ALARM_SET;
           Serial.println("alarm is set ...");
         }
@@ -114,7 +117,6 @@ void change_state(events e, int data) {
         Serial.println(" entered ...");
 
         if(is_pin_entered()) {
-          digitalWrite(led, LOW);
           currentState = NORMAL;
           Serial.println("back to normal ...");
         }
@@ -136,6 +138,7 @@ void change_state(events e, int data) {
 
         if(is_pin_entered()) {
           digitalWrite(led, LOW);
+          digitalWrite(buzzer, LOW);
           alarm_timer.stop();
           currentState = NORMAL;
           Serial.println("back to normal ...");
@@ -143,7 +146,11 @@ void change_state(events e, int data) {
       }
       if(e == ALARM) {
         Serial.println("alarm sounding ...");
+
+        digitalWrite(led, HIGH);
+        digitalWrite(buzzer, HIGH);
         alarm_timer.stop();
+        alarm_count = ALARM_DELAY / ALARM_POLL_TIME;
         currentState = ALARM_ON;
       }
       break;
@@ -156,6 +163,7 @@ void change_state(events e, int data) {
 
         if(is_pin_entered()) {
           digitalWrite(led, LOW);
+          digitalWrite(buzzer, LOW);
           currentState = NORMAL;
           Serial.println("back to normal ...");
         }
@@ -237,5 +245,14 @@ void door_opened() {
 }
 
 void alarm_ctrl() {
-  alarmTimeUp = true;
+  digitalWrite(led, !digitalRead(led));
+  digitalWrite(buzzer, !digitalRead(buzzer));
+
+  if(alarm_count == 0) {
+    alarmTimeUp = true;
+  }
+  if(alarm_count > 0) {
+    Serial.println(alarm_count);
+    alarm_count--;
+  }
 }

@@ -149,6 +149,7 @@ void change_state(events e, int data) {
 
         digitalWrite(led, HIGH);
         digitalWrite(buzzer, HIGH);
+        send_text();
         alarm_timer.stop();
         alarm_count = ALARM_DELAY / ALARM_POLL_TIME;
         currentState = ALARM_ON;
@@ -172,6 +173,12 @@ void change_state(events e, int data) {
     default:
       break;
   }
+}
+
+void send_text() {
+  Serial.println("sending alert text ...");
+  String data = String(10);
+  Particle.publish("alarm_text", data, PRIVATE);
 }
 
 void enter_key(int value) {
